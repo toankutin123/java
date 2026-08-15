@@ -40,8 +40,8 @@ public class MainFrame extends JFrame {
     private final JTextField studentIdField = new JTextField();
     private final JTextField studentNameField = new JTextField();
     private final JTextField studentGradeField = new JTextField();
-    private final List<Student> students = new ArrayList<>();
-    private final StudentTableModel studentTableModel = new StudentTableModel(students);
+    private final StudentDAO studentDAO = new StudentDAO();
+    private final StudentTableModel studentTableModel = new StudentTableModel(studentDAO.getStudents());
     private final JTable studentTable = new JTable(studentTableModel);
 
     private double calculatorValue = 0;
@@ -298,7 +298,7 @@ public class MainFrame extends JFrame {
         studentTable.setSelectionBackground(new java.awt.Color(200, 230, 255));
         studentTable.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting() && studentTable.getSelectedRow() >= 0) {
-                Student student = students.get(studentTable.getSelectedRow());
+                Student student = studentDAO.getStudents().get(studentTable.getSelectedRow());
                 studentIdField.setText(student.getId());
                 studentNameField.setText(student.getName());
                 studentGradeField.setText(String.valueOf(student.getGrade()));
@@ -308,16 +308,22 @@ public class MainFrame extends JFrame {
         panel.add(leftPanel, BorderLayout.WEST);
         panel.add(new JScrollPane(studentTable), BorderLayout.CENTER);
 
-        students.add(new Student("SV001", "An", 8.5));
-        students.add(new Student("SV002", "Bình", 7.0));
         studentTableModel.fireTableDataChanged();
         return panel;
     }
 
     private void addStudent() {
         try {
-            Student student = new Student(studentIdField.getText().trim(), studentNameField.getText().trim(), Double.parseDouble(studentGradeField.getText().trim()));
-            students.add(student);
+            String id = studentIdField.getText().trim();
+            String name = studentNameField.getText().trim();
+            double grade = Double.parseDouble(studentGradeField.getText().trim());
+
+            if (id.isEmpty() || name.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Mã và tên sinh viên không được để trống");
+                return;
+            }
+
+            studentDAO.addStudent(new Student(id, name, grade));
             studentTableModel.fireTableDataChanged();
             clearStudentForm();
         } catch (NumberFormatException ex) {
@@ -332,14 +338,17 @@ public class MainFrame extends JFrame {
             return;
         }
         try {
-            Student student = students.get(selectedRow);
-            student.setId(studentIdField.getText().trim());
-            student.setName(studentNameField.getText().trim());
-            student.setGrade(Double.parseDouble(studentGradeField.getText().trim()));
+            String id = studentIdField.getText().trim();
+            String name = studentNameField.getText().trim();
+            double grade = Double.parseDouble(studentGradeField.getText().trim());
+
+            studentDAO.updateStudent(id, name, grade);
             studentTableModel.fireTableRowsUpdated(selectedRow, selectedRow);
             clearStudentForm();
         } catch (NumberFormatException ex) {
             JOptionPane.showMessageDialog(this, "Điểm phải là số hợp lệ");
+        } catch (IllegalArgumentException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage());
         }
     }
 
@@ -349,7 +358,8 @@ public class MainFrame extends JFrame {
             JOptionPane.showMessageDialog(this, "Chọn một sinh viên để xóa");
             return;
         }
-        students.remove(selectedRow);
+        String id = studentDAO.getStudents().get(selectedRow).getId();
+        studentDAO.deleteStudent(id);
         studentTableModel.fireTableDataChanged();
         clearStudentForm();
     }
